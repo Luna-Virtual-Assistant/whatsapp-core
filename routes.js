@@ -31,7 +31,7 @@ routes.post("/send-message", async (req, res) => {
 
 routes.post("/send-message-by-id", async (req, res) => {
   const { chatId, message } = req.body;
-  await sendMessageByChatId(chatId, message);
+  await sendMessageByChatId(chatId, message, res);
   return res.end(JSON.stringify({ res: "Sending message!" }));
 });
 

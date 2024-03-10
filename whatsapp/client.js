@@ -63,6 +63,7 @@ async function connectClient(name, res) {
       delete sessions[sessionName];
       clearInterval(interval);
     }
+    if (sessionConnected) clearInterval(interval);
     count--;
   }, 1000);
 
@@ -106,7 +107,9 @@ async function saveGroupsIds() {
  * @param {string} chatId
  * @param {string} message
  */
-async function sendMessageByChatId(chatId, message) {
+async function sendMessageByChatId(chatId, message, res) {
+  if (!sessions[sessionName])
+    return res.end(JSON.stringify({ res: "Session not found" }));
   const chat = await sessions[sessionName].getChatById(chatId);
   await chat.sendMessage(message);
 }
