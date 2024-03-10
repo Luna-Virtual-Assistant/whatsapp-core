@@ -1,0 +1,20 @@
+{
+  "name": "whatsapp-core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.3",
+    "fs": "^0.0.1-security",
+    "fuzzball": "^2.1.2",
+    "pino": "^8.19.0",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "github:alechkos/whatsapp-web.js#forward-with-caption"
+  }
+}
