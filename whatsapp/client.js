@@ -3,6 +3,7 @@ const { Client, LocalAuth } = require("whatsapp-web.js");
 const fuzz = require("fuzzball");
 const fs = require("fs");
 const qrcode = require("qrcode-terminal");
+const { parentPort } = require("worker_threads");
 const {
   HEADLEES_BROWSER,
   JSON_FOLDER,
@@ -11,7 +12,8 @@ const {
   TIME_TO_DELETE_SESSION,
 } = require("../utils/config");
 
-let numberClient;
+const SESSION_NAME = process.argv[2];
+const RESPONSE = process.argv[3];
 
 /** @type {{[_:string]: Client}} */
 const sessions = {};
@@ -21,6 +23,8 @@ let allChats;
 
 /**@type {string} */
 let sessionName;
+
+connectClient(SESSION_NAME, RESPONSE);
 
 async function connectClient(name, res) {
   sessionName = name;
@@ -68,7 +72,6 @@ async function connectClient(name, res) {
   }, 1000);
 
   client.on("ready", async () => {
-    numberClient = client.info.wid.user;
     sessionConnected = true;
     console.log("Client is ready!");
     if (!fs.existsSync(JSON_FOLDER)) {
@@ -83,7 +86,7 @@ async function connectClient(name, res) {
 /**
  * @param {string} chatName
  * @param {string} message */
-async function sendMessageByChatName(chatName, message, res) {
+async function sendMessageByChatName({ chatName, message, res }) {
   let chatToSend;
   allChats.forEach((chat) => {
     if (fuzz.ratio(chat.name.toLowerCase(), chatName) >= 95) {
@@ -107,11 +110,19 @@ async function saveGroupsIds() {
  * @param {string} chatId
  * @param {string} message
  */
-async function sendMessageByChatId(chatId, message, res) {
+async function sendMessageByChatId({ chatId, message, res }) {
   if (!sessions[sessionName])
     return res.end(JSON.stringify({ res: "Session not found" }));
   const chat = await sessions[sessionName].getChatById(chatId);
   await chat.sendMessage(message);
 }
 
-module.exports = { connectClient, sendMessageByChatName, sendMessageByChatId };
+const events = {
+  "send-message": sendMessageByChatName,
+  "send-message-by-id": sendMessageByChatId,
+};
+
+parentPort.on("message", async (message) => {
+  const { event, data } = message;
+  await events[event](data);
+});
