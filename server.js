@@ -1,8 +1,10 @@
 const express = require("express");
 const app = express();
-const { PORT } = require("./utils/config");
-const { routes } = require("./routes");
+const {PORT} = require("./utils/config");
+const {routes} = require("./routes");
+const {checkToken} = require("./utils/functions")
 
+app.use(checkToken)
 app.use((req, res, next) => {
   const origin = req.headers.origin || "*";
 
@@ -29,7 +31,7 @@ app.use((req, res, next) => {
 app.use(routes);
 
 app.all("*", (req, res) => {
-  return res.status(404).json({ error: "Not Found" });
+  return res.status(404).json({error: "Not Found"});
 });
 
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
