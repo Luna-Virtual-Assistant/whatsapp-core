@@ -5,7 +5,7 @@ const PORT = 7000;
 const JSON_FOLDER = "json";
 const GROUPS_IDS = "/groups.json";
 const SESSIONS_FOLDER = ".wwebjs_auth";
-const TIME_TO_DELETE_SESSION = 60;
+const TIME_TO_DELETE_SESSION = 20;
 
 module.exports = {
   ALLOWED_ORIGINS,
