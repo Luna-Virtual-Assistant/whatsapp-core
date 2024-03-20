@@ -16,6 +16,8 @@
     "fuzzball": "^2.1.2",
     "pino": "^8.19.0",
     "qrcode-terminal": "^0.12.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
     "whatsapp-web.js": "github:alechkos/whatsapp-web.js#forward-with-caption"
   }
 }

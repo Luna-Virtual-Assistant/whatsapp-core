@@ -3,6 +3,25 @@ const app = express();
 const {PORT} = require("./utils/config");
 const {routes} = require("./routes");
 const {checkToken} = require("./utils/functions")
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsdoc = require("swagger-jsdoc");
+
+const options = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Whatsapp API",
+      version: "1.0.0",
+      description:
+        'APIs direcionadas para o whatsapp ultilizando a biblioteca <a href="https://docs.wwebjs.dev/">whatsapp-web.js</a>',
+    },
+  },
+  apis: ["routes.js"],
+};
+
+const specs = swaggerJsdoc(options);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
 app.use(checkToken)
 app.use((req, res, next) => {
