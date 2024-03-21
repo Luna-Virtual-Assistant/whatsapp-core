@@ -10,13 +10,14 @@ const {
   SESSIONS_FOLDER,
   TIME_TO_DELETE_SESSION,
 } = require("../utils/config");
+const { postChatsClient, getAllChats } = require("../utils/functions");
 
 let numberClient;
 
 /** @type {{[_:string]: Client}} */
 const sessions = {};
 
-/**@type {WAWebJS.Chat[]} */
+/**@type {{chat_id: string, chat_name: string, session_name: string}[]} */
 let allChats;
 
 /**@type {string} */
@@ -56,12 +57,14 @@ async function connectClient(name, res) {
 
   const interval = setInterval(() => {
     if (!count && !sessionConnected) {
-      sessions[sessionName].destroy();
-      fs.rmSync(`${SESSIONS_FOLDER}/session-${sessionName}`, {
-        recursive: true,
+      sessions[sessionName].destroy().then(() => {
+        delete sessions[sessionName];
+        fs.rmSync(`${SESSIONS_FOLDER}/session-${sessionName}`, {
+          recursive: true,
+          force: true,
+        });
+        clearInterval(interval);
       });
-      delete sessions[sessionName];
-      clearInterval(interval);
     }
     if (sessionConnected) clearInterval(interval);
     count--;
@@ -71,12 +74,8 @@ async function connectClient(name, res) {
     numberClient = client.info.wid.user;
     sessionConnected = true;
     console.log("Client is ready!");
-    if (!fs.existsSync(JSON_FOLDER)) {
-      fs.mkdirSync(JSON_FOLDER, { recursive: true });
-      fs.writeFileSync(JSON_FOLDER + GROUPS_IDS, JSON.stringify([]));
-    }
-    allChats = JSON.parse(fs.readFileSync(JSON_FOLDER + GROUPS_IDS));
-    if (!allChats || !allChats.length) return await saveGroupsIds();
+    allChats = await getAllChats("chats", sessionName);
+    if (!allChats.length) await saveGroupsIds();
   });
 }
 
@@ -86,21 +85,24 @@ async function connectClient(name, res) {
 async function sendMessageByChatName(chatName, message, res) {
   let chatToSend;
   allChats.forEach((chat) => {
-    if (fuzz.ratio(chat.name.toLowerCase(), chatName) >= 95) {
+    if (fuzz.ratio(chat.chat_name.toLowerCase(), chatName) >= 95) {
       chatToSend = chat;
     }
   });
   if (!chatToSend) return res.end(JSON.stringify({ res: "Chat not found" }));
-  const chat = await sessions[sessionName].getChatById(chatToSend.id);
+  const chat = await sessions[sessionName].getChatById(chatToSend.chat_id);
   await chat.sendMessage(message);
 }
 
 async function saveGroupsIds() {
   allChats = await sessions[sessionName].getChats();
   allChats = allChats.map((group) => {
-    return { id: group.id._serialized, name: group.name };
+    return {
+      chat_id: group.id._serialized,
+      chat_name: group.name,
+    };
   });
-  fs.writeFileSync(JSON_FOLDER + GROUPS_IDS, JSON.stringify(allChats));
+  postChatsClient(allChats, "chats", sessionName);
 }
 
 /**

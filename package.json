@@ -10,11 +10,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.4.5",
     "express": "^4.18.3",
     "fs": "^0.0.1-security",
     "fuzzball": "^2.1.2",
+    "pg": "^8.11.3",
     "pino": "^8.19.0",
     "qrcode-terminal": "^0.12.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
     "whatsapp-web.js": "github:alechkos/whatsapp-web.js#forward-with-caption"
   }
 }
