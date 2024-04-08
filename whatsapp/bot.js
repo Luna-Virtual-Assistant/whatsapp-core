@@ -64,11 +64,13 @@ async function getAllChatsToClient(chats) {
     chats.map((chat) => {
       const id = chat.id;
       let name = chat.name;
-      name = !chat.name ? chat.notify : `Unknown-${count++}`;
+      if (!name) name = !chat.name ? chat.notify : `Unknown-${count++}`;
       allChats.push({ chat_id: id, chat_name: name });
     });
-  } catch {}
-  await postChats(allChats, SESSION_NAME);
+  } catch {
+  } finally {
+    await postChats(allChats, SESSION_NAME);
+  }
 }
 
 async function connectWASocket() {
@@ -88,7 +90,7 @@ async function connectWASocket() {
       return deleteSession();
     }
 
-    if (qr) {
+    if (qr && SESSION_NAME && !sock?.authState?.creds?.registered) {
       qrcode.generate(qr, { small: true });
       const code = await sock.requestPairingCode(SESSION_NAME);
       parentPort.postMessage({ signal: "qr-code", value: { qr, code } });
