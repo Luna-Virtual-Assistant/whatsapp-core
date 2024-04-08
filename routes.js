@@ -21,6 +21,38 @@ const listeners = {
   },
 };
 
+/**
+ * @swagger
+ * tags:
+ *   name: WhatsApp APIs
+ *   description: Endpoints para o WhatsApp
+ */
+
+/**
+ * @swagger
+ * /new-session:
+ *  get:
+ *     summary: Connect session by session name
+ *     tags: [Client]
+ *     parameters:
+ *         - in: query
+ *           name: sessionName
+ *           required: true
+ *           description: session name
+ *           schema:
+ *             type: string
+ *         - in: query
+ *           name: token
+ *           required: true
+ *           description: token autentication
+ *           schema:
+ *             type: string
+ *     responses:
+ *       200:
+ *         description: Returns qr code and code to connection
+ *       400:
+ *         Missing sessionName in query
+ */
 routes.get("/new-session", async (req, res) => {
   if (!req.query.sessionName) {
     return res
@@ -53,6 +85,34 @@ routes.get("/new-session", async (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /send-message:
+ *   post:
+ *     summary: Send message by chat name
+ *     tags: [Message]
+ *     parameters:
+ *         - in: query
+ *           name: token
+ *           required: true
+ *           description: token autentication
+ *           schema:
+ *             type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               chatName:
+ *                 type: string
+ *               message:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Returns status sending
+ */
 routes.post("/send-message", async (req, res) => {
   const { chatName, message } = req.body;
   if (!chatName || !message) {
@@ -74,6 +134,23 @@ routes.post("/send-message", async (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /get-all-chats:
+ *  get:
+ *     summary: Get all chats
+ *     tags: [Chat]
+ *     parameters:
+ *         - in: query
+ *           name: token
+ *           required: true
+ *           description: token autentication
+ *           schema:
+ *             type: string
+ *     responses:
+ *       200:
+ *         description: Returns a message if the client already exists, if it does not exist return the qr code
+ */
 routes.get("/get-all-chats", (req, res) => {
   workers[sessionName].postMessage({ signal: "get-all-chats", value: 1 });
   workers[sessionName].on("message", (message) => {
