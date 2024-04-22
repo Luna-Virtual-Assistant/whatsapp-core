@@ -2,6 +2,36 @@ const express = require("express");
 const app = express();
 const { PORT } = require("./utils/config");
 const { routes } = require("./routes");
+const dotenv = require("dotenv");
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsdoc = require("swagger-jsdoc");
+dotenv.config();
+
+const options = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Whatsapp API",
+      version: "1.0.0",
+      description:
+        'APIs direcionadas para o whatsapp ultilizando a biblioteca <a href="https://github.com/WhiskeySockets/Baileys">Baileys</a>',
+    },
+  },
+  apis: ["routes.js"],
+};
+
+const specs = swaggerJsdoc(options);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
+
+function checkToken(req, res, next) {
+  const token = req.query.token;
+  const expectedToken = process.env.TOKEN;
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  if (token !== expectedToken)
+    return res.status(403).json({ error: "Forbidden" });
+  next();
+}
 
 app.use((req, res, next) => {
   const origin = req.headers.origin || "*";
@@ -18,6 +48,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(checkToken);
+
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -32,4 +64,6 @@ app.all("*", (req, res) => {
   return res.status(404).json({ error: "Not Found" });
 });
 
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
