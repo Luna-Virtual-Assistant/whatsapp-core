@@ -2,10 +2,10 @@ const qrcode = require("qrcode-terminal");
 const fuzz = require("fuzzball");
 const { getWASocket } = require("./WASocket");
 const { WASocket, DisconnectReason } = require("@whiskeysockets/baileys");
-const { parentPort } = require("worker_threads");
 const { SESSION_PATH } = require("../utils/config");
 const fs = require("fs");
 const { getAllChats, postChats } = require("../utils/functions");
+const { publish } = require("../mqtt_publisher/publisher");
 
 const SESSION_NAME = process.argv[2];
 
@@ -26,24 +26,23 @@ async function sendMessageByChatName({ chatName, message }) {
   try {
     if (!allChats.length) await getAllChats(SESSION_NAME);
     /** @type {{chat_id: string, chat_name: string}} */
-    let chatToSend;
-    allChats.forEach((chat) => {
-      if (fuzz.ratio(chat.chat_name, chatName) >= 95) {
-        chatToSend = chat;
-      }
-    });
-    if (!chatToSend)
-      return parentPort.postMessage({
+    const contactsWithPattern = allChats.filter(
+      (chat) => fuzz.ratio(chat.chat_name, chatName) >= 70
+    );
+    if (contactsWithPattern.length === 1) {
+      await sock.sendMessage(contactsWithPattern[0].chat_id, { text: message });
+      process.send({
         signal: "any",
-        value: { res: "Chat not found", status: 404 },
+        value: { res: "Message sent", status: 200 },
       });
-    await sock.sendMessage(chatToSend.chat_id, { text: message });
-    parentPort.postMessage({
+    }
+    publish({ signal: "a fazer", value: contactsWithPattern });
+    process.send({
       signal: "any",
-      value: { res: "Message sent", status: 200 },
+      value: { res: "Message not sent", status: 204 },
     });
   } catch {
-    parentPort.postMessage({
+    process.send({
       signal: "any",
       value: { res: "Error, message not sent", status: 400 },
     });
@@ -51,7 +50,6 @@ async function sendMessageByChatName({ chatName, message }) {
 }
 async function deleteSession() {
   fs.rmSync(SESSION_PATH + SESSION_NAME, { recursive: true });
-  parentPort.close();
   process.exit();
 }
 
@@ -89,11 +87,10 @@ async function connectWASocket() {
         return connectWASocket();
       return deleteSession();
     }
-
     if (qr && SESSION_NAME && !sock?.authState?.creds?.registered) {
       qrcode.generate(qr, { small: true });
       const code = await sock.requestPairingCode(SESSION_NAME);
-      parentPort.postMessage({ signal: "qr-code", value: { qr, code } });
+      process.send({ signal: "qr-code", value: { qr, code } });
       setTimeout(() => !sock.user && deleteSession(), 50 * 1000);
     }
   });
@@ -111,15 +108,15 @@ const signals = {
   "send-message-by-chat-name": sendMessageByChatName,
   "get-all-chats": () => {
     if (!allChats.length)
-      parentPort.postMessage({
+      process.send({
         signal: "any",
         value: { res: "No chats found", status: 404 },
       });
-    parentPort.postMessage({ signal: "all-chats", value: allChats });
+    process.send({ signal: "all-chats", value: allChats });
   },
 };
 
-parentPort.on("message", (message) => {
+process.on("message", (message) => {
   const { value, signal } = message;
   signals[signal] && signals[signal](value);
 });

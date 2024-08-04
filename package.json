@@ -18,10 +18,10 @@
     "fuzzball": "^2.1.2",
     "jimp": "^0.22.10",
     "link-preview-js": "^3.0.5",
+    "mqtt": "^5.8.1",
     "pg": "^8.11.5",
     "pino": "^8.19.0",
     "qrcode-terminal": "^0.12.0",
-    "worker-threads": "^1.0.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0"
   }
