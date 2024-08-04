@@ -1,10 +1,10 @@
 const express = require("express");
 const routes = express.Router();
-const { Worker } = require("worker_threads");
+const child_process = require("child_process");
 const fs = require("fs");
 const { SESSION_PATH } = require("./utils/config");
 
-/**@type {{[_:string]: Worker}} */
+/**@type {{[_:string]: child_process}} */
 const workers = {};
 
 let sessionName = "";
@@ -66,9 +66,7 @@ routes.get("/new-session", async (req, res) => {
       .status(400)
       .end(JSON.stringify({ res: "Session already exists" }));
   }
-  workers[sessionName] = new Worker("./whatsapp/bot.js", {
-    argv: [sessionName],
-  });
+  workers[sessionName] = child_process.fork("./whatsapp/bot.js", [sessionName]);
   workers[sessionName].on("message", async (message) => {
     const signal = message.signal;
     const value = message.value;
@@ -122,7 +120,7 @@ routes.post("/send-message", async (req, res) => {
         JSON.stringify({ res: "Missing chatName or message in request body" })
       );
   }
-  workers[sessionName].postMessage({
+  workers[sessionName].send({
     signal: "send-message-by-chat-name",
     value: { chatName, message },
   });
@@ -152,7 +150,7 @@ routes.post("/send-message", async (req, res) => {
  *         description: Returns a message if the client already exists, if it does not exist return the qr code
  */
 routes.get("/get-all-chats", (req, res) => {
-  workers[sessionName].postMessage({ signal: "get-all-chats", value: 1 });
+  workers[sessionName].send({ signal: "get-all-chats", value: 1 });
   workers[sessionName].on("message", (message) => {
     const { signal, value } = message;
     if (signal == "all-chats") {
@@ -171,9 +169,7 @@ routes.get("/get-all-chats", (req, res) => {
   const allSessions = fs.readdirSync(SESSION_PATH);
   allSessions.forEach((folder) => {
     sessionName = folder;
-    workers[folder] = new Worker("./whatsapp/bot.js", {
-      argv: [folder],
-    });
+    workers[folder] = child_process.fork("./whatsapp/bot.js", [folder]);
   });
 })();
 
