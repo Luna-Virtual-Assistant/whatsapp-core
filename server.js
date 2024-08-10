@@ -5,6 +5,8 @@ const { routes } = require("./routes");
 const dotenv = require("dotenv");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
+const mqttClient = require("./mqtt_connection/callbacks");
+
 dotenv.config();
 
 const options = {
@@ -19,6 +21,8 @@ const options = {
   },
   apis: ["routes.js"],
 };
+
+mqttClient.connect();
 
 const specs = swaggerJsdoc(options);
 

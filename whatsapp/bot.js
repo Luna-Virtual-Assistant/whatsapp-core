@@ -5,7 +5,7 @@ const { WASocket, DisconnectReason } = require("@whiskeysockets/baileys");
 const { SESSION_PATH } = require("../utils/config");
 const fs = require("fs");
 const { getAllChats, postChats } = require("../utils/functions");
-const { publish } = require("../mqtt_publisher/publisher");
+const mqttClient = require("../mqtt_connection/callbacks");
 
 const SESSION_NAME = process.argv[2];
 
@@ -36,16 +36,9 @@ async function sendMessageByChatName({ chatName, message }) {
         value: { res: "Message sent", status: 200 },
       });
     }
-    publish({ signal: "a fazer", value: contactsWithPattern });
-    process.send({
-      signal: "any",
-      value: { res: "Message not sent", status: 204 },
-    });
-  } catch {
-    process.send({
-      signal: "any",
-      value: { res: "Error, message not sent", status: 400 },
-    });
+    mqttClient.onDuplicatedContacts(contactsWithPattern);
+  } catch (err) {
+    console.error(err);
   }
 }
 async function deleteSession() {
