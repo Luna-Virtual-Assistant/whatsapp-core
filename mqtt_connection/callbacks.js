@@ -16,19 +16,29 @@ class MqttHandler {
   onConnect = () => {
     console.log("Connected to MQTT Broker");
     this.mqttClient.subscribe("/whatsapp", { qos: 0 });
+    this.mqttClient.subscribe("/whatsapp/duplicated", { qos: 0 });
   };
 
-  onMessage = (topic, message) => {
-    console.log(`Received message: ${message.toString()} from topic ${topic}`);
+  onMessage = async (topic, message) => {
+    if (topic === "/whatsapp/duplicated") {
+      const data = JSON.parse(message.toString());
+      // TODO: Send message to specified contact
+    }
   };
 
-  onDuplicatedContacts = (contacts) => {
-    const stringifiedContacts = JSON.stringify(contacts);
-    console.log(this.mqttClient.publish);
-    this.mqttClient.publish("/luna", stringifiedContacts, {
-      qos: 0,
-      retain: false,
-    });
+  onDuplicatedContacts = (data) => {
+    if (this.mqttClient) {
+      const stringifiedContacts = JSON.stringify({
+        contacts: data.contacts,
+        message: data.message,
+      });
+      this.mqttClient.publish("/luna/duplicated", stringifiedContacts, {
+        qos: 0,
+        retain: false,
+      });
+    } else {
+      console.error("MQTT client is not initialized.");
+    }
   };
 
   connect() {
@@ -41,6 +51,14 @@ class MqttHandler {
 
     this.mqttClient.on("connect", this.onConnect);
     this.mqttClient.on("message", this.onMessage);
+  }
+
+  disconnect() {
+    if (this.mqttClient) {
+      this.mqttClient.end();
+    } else {
+      console.error("MQTT client is not initialized.");
+    }
   }
 }
 

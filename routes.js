@@ -130,6 +130,7 @@ routes.post("/send-message", async (req, res) => {
       return res.status(value.status).end(JSON.stringify({ res: value.res }));
     }
   });
+  res.end();
 });
 
 /**
