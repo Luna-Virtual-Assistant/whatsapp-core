@@ -5,7 +5,10 @@ const { WASocket, DisconnectReason } = require("@whiskeysockets/baileys");
 const { SESSION_PATH } = require("../utils/config");
 const fs = require("fs");
 const { getAllChats, postChats } = require("../utils/functions");
+
 const mqttClient = require("../mqtt_connection/callbacks");
+
+mqttClient.connect();
 
 const SESSION_NAME = process.argv[2];
 
@@ -19,16 +22,28 @@ let allChats = [];
 
 /**
  * @param {string} chatName
+ * @param {string} chatId
  * @param {string} message
  * @returns {Promise<boolean>}
  */
-async function sendMessageByChatName({ chatName, message }) {
+async function sendMessageByChatName({ chatName, chatId, message }) {
   try {
     if (!allChats.length) await getAllChats(SESSION_NAME);
+
+    if (chatId) {
+      await sock.sendMessage(chatId, { text: message });
+      process.send({
+        signal: "any",
+        value: { res: "Message sent", status: 200 },
+      });
+      return;
+    }
+
     /** @type {{chat_id: string, chat_name: string}} */
     const contactsWithPattern = allChats.filter(
       (chat) => fuzz.ratio(chat.chat_name, chatName) >= 70
     );
+
     if (contactsWithPattern.length === 1) {
       await sock.sendMessage(contactsWithPattern[0].chat_id, { text: message });
       process.send({
@@ -36,11 +51,12 @@ async function sendMessageByChatName({ chatName, message }) {
         value: { res: "Message sent", status: 200 },
       });
     }
-    mqttClient.onDuplicatedContacts(contactsWithPattern);
+    mqttClient.onDuplicatedContacts({ contacts: contactsWithPattern, message });
   } catch (err) {
     console.error(err);
   }
 }
+
 async function deleteSession() {
   fs.rmSync(SESSION_PATH + SESSION_NAME, { recursive: true });
   process.exit();
@@ -54,6 +70,7 @@ async function getAllChatsToClient(chats) {
     let count = 0;
     chats.map((chat) => {
       const id = chat.id;
+      console.log(id);
       let name = chat.name;
       if (!name) name = !chat.name ? chat.notify : `Unknown-${count++}`;
       allChats.push({ chat_id: id, chat_name: name });
