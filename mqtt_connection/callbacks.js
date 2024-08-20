@@ -35,7 +35,6 @@ class MqttHandler {
   };
 
   connect() {
-    console.log("aqui1");
     this.mqttClient = mqtt.connect({
       host: this.host,
       port: this.port,

@@ -57,7 +57,6 @@ class ClientW {
       let count = 0;
       chats.map((chat) => {
         const id = chat.id;
-        console.log(id);
         let name = chat.name;
         if (!name) name = !chat.name ? chat.notify : `Unknown-${count++}`;
         this.chats.push({ chat_id: id, chat_name: name });
