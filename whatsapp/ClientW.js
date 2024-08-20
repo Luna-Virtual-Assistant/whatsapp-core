@@ -5,16 +5,16 @@ const { WASocket, DisconnectReason } = require("@whiskeysockets/baileys");
 const { SESSION_PATH } = require("../utils/config");
 const fs = require("fs");
 const { getAllChats, postChats } = require("../utils/functions");
-const mqttClient = require("../mqtt_connection/callbacks");
+const { MqttHandler } = require("../mqtt_connection/callbacks");
 
 class ClientW {
   constructor(sessionName) {
     this.sessionName = sessionName;
     this.sock = null;
     this.chats = [];
+    this.mqttClient = new MqttHandler();
   }
   async connectWASocket() {
-    mqttClient.connect();
     this.sock = await getWASocket(this.sessionName);
     const connectionClient = { qrcode: "", code: "" };
     this.sock.ev.on("connection.update", async (update) => {
@@ -23,6 +23,7 @@ class ClientW {
       if (connection == "open") {
         console.log(`${this.sessionName} connected!`);
         this.chats = await getAllChats(this.sessionName);
+        this.mqttClient.connect();
       }
 
       if (connection == "close") {
@@ -85,7 +86,7 @@ class ClientW {
         });
         return true;
       }
-      mqttClient.onDuplicatedContacts({
+      this.mqttClient.onDuplicatedContacts({
         contacts: contactsWithPattern,
         message,
       });

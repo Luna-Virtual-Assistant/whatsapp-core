@@ -57,7 +57,7 @@ routes.get("/new-session", async (req, res) => {
   workers[sessionName] = new ClientW(sessionName);
   const { code, qrcode } = await workers[sessionName].connectWASocket();
   if (!qrcode || !code)
-    res
+    return res
       .status(400)
       .end(JSON.stringify({ res: "Error: Unable to establish connection!" }));
 

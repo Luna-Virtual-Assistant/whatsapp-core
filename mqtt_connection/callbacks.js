@@ -19,13 +19,6 @@ class MqttHandler {
     this.mqttClient.subscribe("/whatsapp/duplicated", { qos: 0 });
   };
 
-  onMessage = async (topic, message) => {
-    if (topic === "/whatsapp/duplicated") {
-      const data = JSON.parse(message.toString());
-      // TODO: Send message to specified contact
-    }
-  };
-
   onDuplicatedContacts = (data) => {
     if (this.mqttClient) {
       const stringifiedContacts = JSON.stringify({
@@ -42,6 +35,7 @@ class MqttHandler {
   };
 
   connect() {
+    console.log("aqui1");
     this.mqttClient = mqtt.connect({
       host: this.host,
       port: this.port,
@@ -49,8 +43,12 @@ class MqttHandler {
       protocol: "mqtt",
     });
 
-    this.mqttClient.on("connect", this.onConnect);
-    this.mqttClient.on("message", this.onMessage);
+    this.mqttClient.on("connect", () => {
+      this.onConnect;
+    });
+    this.mqttClient.on("message", () => {
+      this.onMessage;
+    });
   }
 
   disconnect() {
@@ -62,4 +60,4 @@ class MqttHandler {
   }
 }
 
-module.exports = new MqttHandler();
+module.exports = { MqttHandler };
