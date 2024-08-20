@@ -1,25 +1,13 @@
 const express = require("express");
 const routes = express.Router();
-const child_process = require("child_process");
+const { ClientW } = require("./whatsapp/ClientW");
 const fs = require("fs");
 const { SESSION_PATH } = require("./utils/config");
 
-/**@type {{[_:string]: child_process}} */
+/**@type {{[_:string]: ClientW}} */
 const workers = {};
 
 let sessionName = "";
-
-const listeners = {
-  async "qr-code"(value) {
-    return value;
-  },
-  async "all-chats"(value) {
-    return value;
-  },
-  async any(value) {
-    return value;
-  },
-};
 
 /**
  * @swagger
@@ -66,21 +54,14 @@ routes.get("/new-session", async (req, res) => {
       .status(400)
       .end(JSON.stringify({ res: "Session already exists" }));
   }
-  workers[sessionName] = child_process.fork("./whatsapp/bot.js", [sessionName]);
-  workers[sessionName].on("message", async (message) => {
-    const signal = message.signal;
-    const value = message.value;
-    if (signal == "qr-code") {
-      const { qr, code } = await listeners[signal](value);
-      return res.status(200).end(
-        JSON.stringify({
-          qr,
-          code,
-        })
-      );
-    }
-    listeners[signal](value);
-  });
+  workers[sessionName] = new ClientW(sessionName);
+  const { code, qrcode } = await workers[sessionName].connectWASocket();
+  if (!qrcode || !code)
+    res
+      .status(400)
+      .end(JSON.stringify({ res: "Error: Unable to establish connection!" }));
+
+  return res.status(200).end(JSON.stringify({ qrcode, code }));
 });
 
 /**
@@ -112,25 +93,20 @@ routes.get("/new-session", async (req, res) => {
  *         description: Returns status sending
  */
 routes.post("/send-message", async (req, res) => {
-  const { chatName, message } = req.body;
-  if (!chatName || !message) {
+  const { chatId, chatName, message, sessionName } = req.body;
+  if (!message || !sessionName) {
     return res
       .status(400)
-      .end(
-        JSON.stringify({ res: "Missing chatName or message in request body" })
-      );
+      .end(JSON.stringify({ res: "Not all values ​​were provided!" }));
   }
-  workers[sessionName].send({
-    signal: "send-message-by-chat-name",
-    value: { chatName, message },
+  const status = await workers[sessionName].sendMessageByChatName({
+    chatName,
+    chatId,
+    message,
   });
-  workers[sessionName].on("message", (message) => {
-    const { signal, value } = message;
-    if (signal == "any") {
-      return res.status(value.status).end(JSON.stringify({ res: value.res }));
-    }
-  });
-  res.end();
+  if (!status)
+    return res.status(400).end(JSON.stringify({ res: "Message not send!" }));
+  return res.status(200).end(JSON.stringify({ res: "Message sent!" }));
 });
 
 /**
@@ -150,19 +126,14 @@ routes.post("/send-message", async (req, res) => {
  *       200:
  *         description: Returns a message if the client already exists, if it does not exist return the qr code
  */
-routes.get("/get-all-chats", (req, res) => {
-  workers[sessionName].send({ signal: "get-all-chats", value: 1 });
-  workers[sessionName].on("message", (message) => {
-    const { signal, value } = message;
-    if (signal == "all-chats") {
-      return res
-        .status(200)
-        .end(JSON.stringify({ count: value.length, chats: value }));
-    }
-    if (signal == "any") {
-      return res.status(value.status).end(JSON.stringify({ res: value.res }));
-    }
-  });
+routes.get("/get-all-chats/:sessionName", (req, res) => {
+  const { sessionName } = req.params;
+  if (!workers[sessionName])
+    return res
+      .status(404)
+      .end(JSON.stringify({ res: "Could not find a session" }));
+  const chats = workers[sessionName].chats;
+  return res.status(200).end(JSON.stringify({ count: chats.length, chats }));
 });
 
 (function () {
@@ -170,7 +141,8 @@ routes.get("/get-all-chats", (req, res) => {
   const allSessions = fs.readdirSync(SESSION_PATH);
   allSessions.forEach((folder) => {
     sessionName = folder;
-    workers[folder] = child_process.fork("./whatsapp/bot.js", [folder]);
+    workers[folder] = new ClientW(folder);
+    workers[folder].connectWASocket();
   });
 })();
 

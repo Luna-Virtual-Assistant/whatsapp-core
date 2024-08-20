@@ -14,8 +14,9 @@ class ClientW {
     this.chats = [];
   }
   async connectWASocket() {
-    this.sock = await getWASocket(this.sessionName);
     mqttClient.connect();
+    this.sock = await getWASocket(this.sessionName);
+    const connectionClient = { qrcode: "", code: "" };
     this.sock.ev.on("connection.update", async (update) => {
       const { connection, qr, lastDisconnect } = update;
       const statusCode = lastDisconnect?.error?.output?.statusCode;
@@ -32,22 +33,25 @@ class ClientW {
       if (qr && this.sessionName && !this.sock?.authState?.creds?.registered) {
         qrcode.generate(qr, { small: true });
         const code = await this.sock.requestPairingCode(this.sessionName);
+        connectionClient.code = code;
+        connectionClient.qrcode = qr;
         setTimeout(() => !this.sock.user && this.deleteSession(), 10 * 1000);
-        return { signal: "qr-code", value: { qr, code } };
       }
     });
 
     this.sock.ev.on("messaging-history.set", async (data) => {
       const contacts = data.contacts;
       if (!this.chats.length || contacts.length > this.chats.length)
-        this.getAllChatsToClient(contacts);
+        this.getAllChats(contacts);
     });
+    return connectionClient;
   }
+
   async deleteSession() {
     fs.rmSync(SESSION_PATH + this.sessionName, { recursive: true });
   }
 
-  async getAllChatsToClient(chats) {
+  async getAllChats(chats) {
     try {
       let count = 0;
       chats.map((chat) => {
@@ -68,11 +72,7 @@ class ClientW {
       if (!this.chats.length) await getAllChats(this.sessionName);
       if (chatId) {
         await this.sock.sendMessage(chatId, { text: message });
-        process.send({
-          signal: "any",
-          value: { res: "Message sent", status: 200 },
-        });
-        return;
+        return true;
       }
 
       /** @type {{chat_id: string, chat_name: string}} */
@@ -89,6 +89,7 @@ class ClientW {
         contacts: contactsWithPattern,
         message,
       });
+      return false;
     } catch (err) {
       console.error(err);
     }
