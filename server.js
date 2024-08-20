@@ -5,6 +5,7 @@ const { routes } = require("./routes");
 const dotenv = require("dotenv");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
+
 dotenv.config();
 
 const options = {

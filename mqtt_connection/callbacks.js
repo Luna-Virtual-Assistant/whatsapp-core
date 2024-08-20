@@ -1,47 +1,62 @@
-const mqtt = require("mqtt");
 const dotenv = require("dotenv");
-const Core = require("./core").Core;
+const mqtt = require("mqtt");
 
-dotenv.config();
+dotenv.config({ override: true });
 
-const REQ_TOPIC = process.env.REQ_TOPIC;
-const core = new Core();
-
-const client = mqtt.connect("mqtt://broker_address");
-
-client.on("connect", (connack) => {
-  if (connack.returnCode === 0) {
-    console.log(
-      `[${new Date().toISOString()}] ${
-        client.options.clientId
-      } connected to broker successfully`
-    );
-    client.subscribe(REQ_TOPIC, (err) => {
-      if (err) {
-        console.log(`Subscribe error: ${err}`);
-      }
-    });
-  } else {
-    console.log(`Connection failed with code ${connack.returnCode}`);
+class MqttHandler {
+  constructor() {
+    this.mqttClient = null;
+    this.host = process.env.HOST || "mqtt://localhost";
+    this.port = Number(process.env.PORT) || 1884;
+    this.clientName = process.env.CLIENT_NAME || "whatsapp-client";
+    this.publisherName = process.env.PUBLISHER_NAME || "whatsapp-publisher";
+    this.keepAlive = process.env.KEEP_ALIVE || 60;
   }
-});
 
-client.on("subscribe", (topic, granted) => {
-  console.log(
-    `[${new Date().toISOString()}] ${
-      client.options.clientId
-    } subscribed to topic with granted QOS ${granted[0].qos} on ${REQ_TOPIC}`
-  );
-});
+  onConnect = () => {
+    console.log("Connected to MQTT Broker");
+    this.mqttClient.subscribe("/whatsapp", { qos: 0 });
+    this.mqttClient.subscribe("/whatsapp/duplicated", { qos: 0 });
+  };
 
-client.on("message", (topic, message) => {
-  console.log(
-    `[${new Date().toISOString()}] Received a message on topic ${topic}`
-  );
-  const messagePayload = message.toString();
-  const videoTitle = messagePayload.split(" ").slice(1).join(" ");
-  core.playVideo(videoTitle);
-  console.log(
-    `[${new Date().toISOString()}] Message payload: ${messagePayload}`
-  );
-});
+  onDuplicatedContacts = (data) => {
+    if (this.mqttClient) {
+      const stringifiedContacts = JSON.stringify({
+        contacts: data.contacts,
+        message: data.message,
+      });
+      this.mqttClient.publish("/luna/duplicated", stringifiedContacts, {
+        qos: 0,
+        retain: false,
+      });
+    } else {
+      console.error("MQTT client is not initialized.");
+    }
+  };
+
+  connect() {
+    this.mqttClient = mqtt.connect({
+      host: this.host,
+      port: this.port,
+      clientId: this.clientName,
+      protocol: "mqtt",
+    });
+
+    this.mqttClient.on("connect", () => {
+      this.onConnect;
+    });
+    this.mqttClient.on("message", () => {
+      this.onMessage;
+    });
+  }
+
+  disconnect() {
+    if (this.mqttClient) {
+      this.mqttClient.end();
+    } else {
+      console.error("MQTT client is not initialized.");
+    }
+  }
+}
+
+module.exports = { MqttHandler };
