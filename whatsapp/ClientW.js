@@ -15,6 +15,10 @@ class ClientW {
     this.mqttClient = new MqttHandler();
   }
 
+  disconectClient() {
+    this.sock.end();
+  }
+
   async connectWASocket() {
     this.sock = await getWASocket(this.sessionName);
 
@@ -32,13 +36,17 @@ class ClientW {
         if (connection === "close") {
           if (statusCode === 515 || statusCode === DisconnectReason.timedOut)
             return this.connectWASocket();
-          return this.deleteSession();
         }
 
         if (qr && this.sessionName) {
           qrcode.generate(qr, { small: true });
           resolve(qr);
-          setTimeout(() => !this.sock.user && this.deleteSession(), 50 * 1000);
+          setTimeout(() => {
+            if (!this.sock.user) {
+              this.disconectClient();
+              this.deleteSession();
+            }
+          }, 5 * 1000);
         }
       });
 
@@ -93,6 +101,10 @@ class ClientW {
       });
       return false;
     } catch (err) {
+      this.mqttClient.onDuplicatedContacts({
+        contacts: contactsWithPattern,
+        message,
+      });
       console.error(err);
     }
   }
