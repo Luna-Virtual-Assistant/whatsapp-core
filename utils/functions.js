@@ -1,6 +1,7 @@
 const { cursor } = require("./connectionDB");
 const { TABLE_NAME } = require("./config");
 
+/**@type {import("pg").PoolClient} */
 let db = null;
 
 async function startConnectioDB() {
@@ -48,4 +49,21 @@ async function getAllChats(sessionName) {
   return arrayChats;
 }
 
-module.exports = { postChats, getAllChats };
+async function createTable() {
+  if (!db) await startConnectioDB();
+  try {
+    await db.query(
+      `
+      CREATE TABLE IF NOT EXISTS whatsapp_chat_history (
+        id serial primary key,
+        session_name varchar(200),
+        chat_name varchar(200),
+        chat_id varchar(200)
+      )`
+    );
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+module.exports = { postChats, getAllChats, createTable };
