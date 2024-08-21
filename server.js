@@ -5,6 +5,7 @@ const { routes } = require("./routes");
 const dotenv = require("dotenv");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
+const { createTable } = require("./utils/functions");
 
 dotenv.config();
 
@@ -66,5 +67,6 @@ app.all("*", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  createTable()
+  console.log(`Server running in: http://localhost:${PORT}`);
 });

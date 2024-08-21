@@ -14,38 +14,40 @@ class ClientW {
     this.chats = [];
     this.mqttClient = new MqttHandler();
   }
+
   async connectWASocket() {
     this.sock = await getWASocket(this.sessionName);
-    const connectionClient = { qrcode: "", code: "" };
-    this.sock.ev.on("connection.update", async (update) => {
-      const { connection, qr, lastDisconnect } = update;
-      const statusCode = lastDisconnect?.error?.output?.statusCode;
-      if (connection == "open") {
-        console.log(`${this.sessionName} connected!`);
-        this.chats = await getAllChats(this.sessionName);
-        this.mqttClient.connect();
-      }
 
-      if (connection == "close") {
-        if (statusCode == 515 || statusCode == DisconnectReason.timedOut)
-          return this.connectWASocket();
-        return this.deleteSession();
-      }
-      if (qr && this.sessionName && !this.sock?.authState?.creds?.registered) {
-        qrcode.generate(qr, { small: true });
-        const code = await this.sock.requestPairingCode(this.sessionName);
-        connectionClient.code = code;
-        connectionClient.qrcode = qr;
-        setTimeout(() => !this.sock.user && this.deleteSession(), 10 * 1000);
-      }
-    });
+    return new Promise((resolve, reject) => {
+      this.sock.ev.on("connection.update", async (update) => {
+        const { connection, qr, lastDisconnect } = update;
+        const statusCode = lastDisconnect?.error?.output?.statusCode;
 
-    this.sock.ev.on("messaging-history.set", async (data) => {
-      const contacts = data.contacts;
-      if (!this.chats.length || contacts.length > this.chats.length)
-        this.getAllChats(contacts);
+        if (connection === "open") {
+          console.log(`${this.sessionName} connected!`);
+          this.chats = await getAllChats(this.sessionName);
+          this.mqttClient.connect();
+        }
+
+        if (connection === "close") {
+          if (statusCode === 515 || statusCode === DisconnectReason.timedOut)
+            return this.connectWASocket();
+          return this.deleteSession();
+        }
+
+        if (qr && this.sessionName) {
+          qrcode.generate(qr, { small: true });
+          resolve(qr);
+          setTimeout(() => !this.sock.user && this.deleteSession(), 50 * 1000);
+        }
+      });
+
+      this.sock.ev.on("messaging-history.set", async (data) => {
+        const contacts = data.contacts;
+        if (!this.chats.length || contacts.length > this.chats.length)
+          this.getAllChats(contacts);
+      });
     });
-    return connectionClient;
   }
 
   async deleteSession() {
