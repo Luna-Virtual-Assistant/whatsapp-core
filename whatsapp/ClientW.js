@@ -46,7 +46,7 @@ class ClientW {
               this.disconectClient();
               this.deleteSession();
             }
-          }, 5 * 1000);
+          }, 50 * 1000);
         }
       });
 
