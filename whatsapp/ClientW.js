@@ -4,7 +4,7 @@ const { getWASocket } = require("./WASocket");
 const { WASocket, DisconnectReason } = require("@whiskeysockets/baileys");
 const { SESSION_PATH } = require("../utils/config");
 const fs = require("fs");
-const { getAllChats, postChats } = require("../utils/functions");
+const SQLiteDB = require("../utils/database");
 const { MqttHandler } = require("../mqtt_connection/callbacks");
 
 class ClientW {
@@ -13,6 +13,7 @@ class ClientW {
     this.sock = null;
     this.chats = [];
     this.mqttClient = new MqttHandler();
+    this.database = new SQLiteDB();
   }
 
   disconectClient() {
@@ -29,7 +30,7 @@ class ClientW {
 
         if (connection === "open") {
           console.log(`${this.sessionName} connected!`);
-          this.chats = await getAllChats(this.sessionName);
+          this.chats = await this.database.getAllChats(this.sessionName);
           this.mqttClient.connect();
         }
 
@@ -73,13 +74,13 @@ class ClientW {
       });
     } catch {
     } finally {
-      await postChats(this.chats, this.sessionName);
+      await this.database.postChats(this.chats, this.sessionName);
     }
   }
 
   async sendMessageByChatName({ chatName, chatId, message }) {
     try {
-      if (!this.chats.length) await getAllChats(this.sessionName);
+      if (!this.chats.length) await this.getAllChats(this.sessionName);
       if (chatId) {
         await this.sock.sendMessage(chatId, { text: message });
         return true;
@@ -87,7 +88,7 @@ class ClientW {
 
       /** @type {{chat_id: string, chat_name: string}} */
       const contactsWithPattern = this.chats.filter(
-        (chat) => fuzz.ratio(chat.chat_name, chatName) >= 70
+        (chat) => fuzz.ratio(chat.chat_name, chatName) >= 85
       );
       if (contactsWithPattern.length === 1) {
         await this.sock.sendMessage(contactsWithPattern[0].chat_id, {
