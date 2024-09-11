@@ -5,7 +5,7 @@ const { routes } = require("./routes");
 const dotenv = require("dotenv");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
-const { createTable } = require("./utils/functions");
+const SQLiteDB = require("./utils/database");
 
 dotenv.config();
 
@@ -67,6 +67,7 @@ app.all("*", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  createTable()
+  const database = new SQLiteDB();
+  database.createTable();
   console.log(`Server running in: http://localhost:${PORT}`);
 });
